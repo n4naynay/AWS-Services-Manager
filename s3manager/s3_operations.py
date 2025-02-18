@@ -6,6 +6,7 @@ import os
 from typing import Union
 from datetime import datetime
 import logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 import pandas as pd
 import boto3
@@ -53,22 +54,52 @@ class S3Connection:
             all_buckets.append(items.get("Name"))
         return all_buckets
 
-
-    def upload_file(file_path: str, bucket_name: str, object_name = None) -> Union[str, bool]:
+    def upload_to_s3(self, data: Union[str, pd.DataFrame], bucket_name: str, key: str,
+                     is_dataframe: bool = False) -> bool:
         """
-        Uploads a file to an s3 bucket
-        :param file_path:loca; path to the file
-        :param bucket_name: s3 bucket name
-        :param object_name:name of file in the bucket (if none, the file name will be used)
-        :return:
-        """
-        if not object_name:
-            object_name = os.path.basename(file_path)
+         General method to upload either a file or a DataFrame to S3.
 
-        s3_client = get_client()
+        If the file (or object) already exists in the S3 bucket, the method returns `True`.
+        If the file does not exist, it uploads the file or DataFrame to the S3 bucket and returns `False`.
+
+        Params:
+            data (Union[str, pd.DataFrame]): The input data, which can either be:
+                - a local file path (str) when uploading a file, or
+                - a pandas DataFrame (pd.DataFrame) when uploading data as CSV.
+            bucket_name (str): The name of the S3 bucket where the file or DataFrame should be uploaded.
+            key (str): The key (path) for the object in the S3 bucket.
+            is_dataframe (bool): Flag indicating whether the `data` is a DataFrame. Defaults to False (indicating `data` is a file).
+
+        Returns:
+            bool: `True` if the file already exists in the bucket, `False` if the file is uploaded.
+
+        Raises:
+            Exception: If there is an error during the S3 interaction (e.g., invalid credentials, network issues).
+        """
+        try:
+            # Check if the object exists in the bucket
+            self.client.head_object(Bucket=bucket_name, Key=key)
+            logging.info(f"File {key} already exists in bucket {bucket_name}.")
+            return True  # File exists
+        except Exception as e:
+            logging.info(f"File {key} not found, uploading a new file.")
+            if is_dataframe:
+                # Handle DataFrame upload
+                csv_buffer = StringIO()
+                data.to_csv(csv_buffer, index=False)
+                csv_buffer.seek(0)
+                self.client.put_object(Bucket=bucket_name, Key=key, Body=csv_buffer.getvalue())
+                logging.info(f"DataFrame uploaded as {key} to bucket {bucket_name}.")
+            else:
+                # Handle file upload
+                self.client.upload_file(data, bucket_name, key)  # `data` is a file path here
+                logging.info(f"File {data} uploaded as {key} to bucket {bucket_name}.")
+            return False  # File does not exist or uploaded
+
+
 
 if __name__ == "__main__":
     # Instantiate the class
     conn = S3Connection()
-    conn.get_all_buckets()
-    conn.upload_file("s3docupload","firstprojectnene","testupload")
+    print(conn.get_all_buckets())
+    conn.upload_to_s3("s3docupload","firstprojectnene","testupload22")
