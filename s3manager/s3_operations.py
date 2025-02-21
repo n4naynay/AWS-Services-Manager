@@ -186,12 +186,57 @@ class S3Connection:
 
         return None  # Return None if an error occurs
 
+    def delete_file(self, bucket_name: str, object_name: str) -> bool:
+        """
+        Delete a file from an S3 bucket.
+
+        :param bucket_name: The S3 bucket name
+        :param object_name: The file to delete
+        :return: True if the file was deleted, else False
+        """
+
+        try:
+            self.client.delete_object(Bucket=bucket_name, Key=object_name)
+            print(f"File {object_name} deleted from {bucket_name}")
+            return True
+        except Exception as e:
+            print(f"Error deleting file: {str(e)}")
+        return False
+
+    def get_object_metadata(self, bucket_name: str, key: str) -> Union[dict, None]:
+        """
+        Get metadata for an object in S3.
+        - check if file exists, last modified date, file size, content type
+
+        :param bucket_name: The S3 bucket name
+        :param key: The object in the bucket
+        :return: Metadata dictionary or None if error occurred
+        """
+        #self.client = get_client("s3")
+
+        try:
+            response = self.client.head_object(Bucket=bucket_name, Key=key)
+            metadata = {
+                "File Size (Bytes)": response.get("ContentLength"),
+                "Last Modified": response.get("LastModified"),
+                "Content Type": response.get("ContentType"),
+                "Storage Class": response.get("StorageClass"),
+                "ETag": response.get("ETag"),
+                "Metadata": response.get("Metadata"),
+            }
+            #print(f"Metadata for {key}: {response}")
+            print(metadata)
+            return metadata
+        except Exception as e:
+            print(f"Error getting metadata: {str(e)}")
+        return None
+
+
 if __name__ == "__main__":
     # Instantiate the class
     conn = S3Connection()
 
-    # upload dataset to S3
-    conn.upload_to_s3("s3docupload","firstprojectnene","testupload22")
+
     # create s3 bucket
     conn.create_bucket("marchbucket2025")
     # delete s3 bucket
@@ -201,4 +246,10 @@ if __name__ == "__main__":
     # Read CSV file from an S3 bucket and returns it as a pandas DataFrame
     df = conn.read_file_to_df('loanapprovalproject', "Loan_Data.csv")
     print(df.head())
+    # upload dataset to S3
+    conn.upload_to_s3("s3docupload", "housepriceproject", "dev/train/testupload25")
+    # delete file
+    conn.delete_file("housepriceproject", "dev/traintestupload25", )
+    # get object metadata
+    conn.get_object_metadata("housepriceproject", "dev/train2/house_price.csv")
 
