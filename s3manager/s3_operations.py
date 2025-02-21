@@ -96,10 +96,52 @@ class S3Connection:
                 logging.info(f"File {data} uploaded as {key} to bucket {bucket_name}.")
             return False  # File does not exist or uploaded
 
+    def create_bucket(self, bucket_name:str) -> bool:
+        """
+        Create a new S3 bucket in the specified region.
+
+        :param bucket_name: The name of the bucket to create
+        :return: True if the bucket was created, False if there was an error
+        :param bucket_name:
+        :return:
+        """
+        # Check if the bucket already exists
+        list_of_buckets = self.client.list_buckets().get("Buckets")
+
+        # If the bucket name already exists, modify the name to make it unique
+        if bucket_name in [bucket.get("Name") for bucket in list_of_buckets]:
+            name = str(datetime.now()).split()[0]
+            name = "".join(name.split("-"))
+            bucket_name = f"{bucket_name}-{name}"
+
+        # Print the new bucket name for clarity
+        print(f"Bucket name: {bucket_name}")
+
+        # Get the AWS region
+        region = os.getenv("AWS_REGION", "us-east-1")
+
+        try:
+            # Create the bucket with location constraint if the region is not us-east-1
+            if region == "us-east-1":
+                self.client.create_bucket(Bucket=bucket_name)
+            else:
+                self.client.create_bucket(
+                    Bucket=bucket_name,
+                    CreateBucketConfiguration={'LocationConstraint': region}
+                )
+            print(f"Bucket {bucket_name} created successfully in region {region}.")
+            return True
+        except Exception as e:
+            print(f"Error creating bucket: {str(e)}")
+            return False
 
 
 if __name__ == "__main__":
     # Instantiate the class
     conn = S3Connection()
+    #list all the buckets in S3
     print(conn.get_all_buckets())
+    # upload dataset to S3
     conn.upload_to_s3("s3docupload","firstprojectnene","testupload22")
+    # create s3 bucket
+    conn.create_bucket("marchbucket2025")
