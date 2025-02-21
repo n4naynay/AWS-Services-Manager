@@ -135,13 +135,70 @@ class S3Connection:
             print(f"Error creating bucket: {str(e)}")
             return False
 
+    def delete_bucket(self, bucket_name: str) -> bool:
+        """
+        Delete an S3 bucket.
+
+        :param bucket_name: The S3 bucket name
+        :return: True if the bucket was deleted, else False
+        """
+
+        try:
+            self.client.delete_bucket(Bucket=bucket_name)
+            print(f"Bucket {bucket_name} deleted successfully.")
+            return True
+        except Exception as e:
+            print(f"Error deleting bucket: {str(e)}")
+        return False
+
+    def read_file_to_df(self, bucket_name: str, key: str) -> Union[pd.DataFrame, None]:
+        """Reads a CSV file from an S3 bucket and returns it as a pandas DataFrame."""
+        try:
+            print(f"Fetching file '{key}' from bucket '{bucket_name}'...")
+            # Fetch the object from S3
+            response = self.client.get_object(Bucket=bucket_name, Key=key)
+
+            # Print response metadata
+            print(f"Response Metadata: {response['ResponseMetadata']}")
+            print(f"Content-Type: {response.get('ContentType')}")
+
+            # Check if the response status code indicates success (HTTP 200)
+            status_code = response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+            if status_code != 200:
+                raise ValueError(f"Failed to retrieve object. Status code: {status_code}")
+
+            # Read the CSV file from the response body
+            df = pd.read_csv(response['Body'])
+
+            print("File successfully loaded into DataFrame.")
+            print(df.head())  # Print first few rows
+            return df
+
+        except ClientError as e:
+            # Specific error handling for AWS S3 client errors
+            print(f"S3 ClientError: {e}")
+        except ValueError as e:
+            # Handle case where response status code is not 200
+            print(f"ValueError: {e}")
+        except Exception as e:
+            # Generic exception handling for any other errors
+            print(f"An unexpected error occurred: {e}")
+
+        return None  # Return None if an error occurs
 
 if __name__ == "__main__":
     # Instantiate the class
     conn = S3Connection()
-    #list all the buckets in S3
-    print(conn.get_all_buckets())
+
     # upload dataset to S3
     conn.upload_to_s3("s3docupload","firstprojectnene","testupload22")
     # create s3 bucket
     conn.create_bucket("marchbucket2025")
+    # delete s3 bucket
+    conn.delete_bucket("marchbucket2025")
+    # list all the buckets in S3
+    print(conn.get_all_buckets())
+    # Read CSV file from an S3 bucket and returns it as a pandas DataFrame
+    df = conn.read_file_to_df('loanapprovalproject', "Loan_Data.csv")
+    print(df.head())
+
