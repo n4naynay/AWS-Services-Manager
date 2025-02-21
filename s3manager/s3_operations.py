@@ -231,6 +231,26 @@ class S3Connection:
             print(f"Error getting metadata: {str(e)}")
         return None
 
+    def copy_object(self, source_bucket: str, source_object: str, destination_bucket: str, destination_object: str) \
+            -> bool:
+        """
+        Copy an object from one S3 bucket to another.
+
+        :param source_bucket: The source bucket name
+        :param source_object: The object in the source bucket
+        :param destination_bucket: The destination bucket name
+        :param destination_object: The name of the object in the destination bucket
+        :return: True if the object was copied, else False
+        """
+        try:
+            copy_source = {'Bucket': source_bucket, 'Key': source_object}
+            self.client.copy_object(CopySource=copy_source, Bucket=destination_bucket, Key=destination_object)
+            print(f"Copied {source_object} from {source_bucket} to {destination_bucket}/{destination_object}")
+            return True
+        except Exception as e:
+            print(f"Error copying object: {str(e)}")
+        return False
+
 
 if __name__ == "__main__":
     # Instantiate the class
@@ -252,4 +272,6 @@ if __name__ == "__main__":
     conn.delete_file("housepriceproject", "dev/traintestupload25", )
     # get object metadata
     conn.get_object_metadata("housepriceproject", "dev/train2/house_price.csv")
+    # Copying file from one bucket to the other
+    conn.copy_object("housepriceproject","dev/train/testupload25", "housepriceproject", 'newnameproject')
 
